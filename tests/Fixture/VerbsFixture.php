@@ -19,11 +19,10 @@ class VerbsFixture extends TestFixture
     {
         $this->records = [
             [
-                'id' => 1,
-                'infinitive' => 'Lorem ipsum dolor sit amet',
-                'preterit' => 'Lorem ipsum dolor sit amet',
-                'past_participle' => 'Lorem ipsum dolor sit amet',
-                'translation' => 'Lorem ipsum dolor sit amet',
+                'infinitive' => 'be',
+                'preterit' => 'was/were',
+                'past_participle' => 'been',
+                'translation' => 'être',
                 'created' => '2024-07-18 09:39:31',
                 'modified' => '2024-07-18 09:39:31',
             ],

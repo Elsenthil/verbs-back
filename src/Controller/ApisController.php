@@ -147,4 +147,137 @@ class ApisController extends AppController
         $this->response = $this->response->withStringBody(json_encode($response));
         return $this->response;
     }
+
+    public function loadTest(){
+
+        $this->request->allowMethod(['post']);
+        $code = 500;
+        $message = 'Erreur';
+        $success = false;
+        $data = $this->request->getData();
+        $errors = [];
+
+        $existingTest = $this->fetchTable('Tests')->find()->contain('Answers', function ($q) {
+            return $q->where(['Answers.is_done' => false]);
+        })->where(['Tests.is_finished' => false])->first();
+
+        if(empty($existingTest)):
+            $limit = (!empty($data['limit'])) ? intval($data['limit']) : 5 ;
+            $given = (!empty($data['given'])) ? $data['given']: 'random' ; //valeurs possibles : infinitive, preterit, past_participle, translation, random
+
+            $index = ['infinitive', 'preterit', 'past_participle', 'translation'];
+            $key = array_search($given, $index);
+            $test = $this->fetchTable('Tests')->newEmptyEntity();
+            $verbs = $this->fetchTable('Verbs')->getRandomVerbs($limit);
+            $answers = [];
+
+            if($key !== false || $given === 'random'): 
+                if(!empty($verbs)):
+                    if($this->fetchTable('Tests')->save($test)):
+                        foreach($verbs as $verb):
+                            $answer = $this->fetchTable('Answers')->newEmptyEntity();
+                            $answer->is_done = false;
+                            $answer->is_correct = false;
+                            $answer->verb_id = $verb->id;
+                            $answer->test_id = $test->id;
+
+                            $answer->infinitive = null;
+                            $answer->infinitive_given = false;
+                            $answer->preterit = null;
+                            $answer->preterit_given = false;
+                            $answer->past_participle = null;
+                            $answer->past_participle_given = false;
+                            $answer->translation = null;
+                            $answer->translation_given = false;
+
+                            if($given === 'random'):
+                                $key = rand(0,count($index)-1);
+                            endif;
+
+                            $field = $index[$key];
+                            $givenField = $index[$key].'_given';
+                            $answer->$field = $verb->$field;
+                            $answer->$givenField = true;
+                            if($this->fetchTable('Answers')->save($answer)):
+                                $answers[] = $answer;
+                            else:
+                                $errors[] = 'Le verbe '.$verb->infinitive.' n\'a pas pu être ajouté';
+                            endif;
+                            $data['response']['created'][] = $answer;
+                        endforeach;
+
+                        if(count($errors) == 0):
+                            $code = 200;
+                            $message = 'Test créé avec succès';
+                            $success = true;
+                        else:
+                            if(count($errors) == count($verbs)):
+                                $code = 400;
+                                $message = 'Erreur : test non conforme, opération annulée';
+                                $this->fetchTable('Tests')->delete($test);
+                            else:
+                                $code = 300;
+                                $message = 'Attention : Test créé mais un ou plusieurs verbes n\'ont pas pu être ajouté correctement';
+                                $success = true;
+                            endif;
+                        endif;
+                    else:
+                        $code = 400;
+                        $message = 'Erreur : aucun verbe trouvé !';
+                    endif;
+                else:
+                    $code = 400;
+                    $message = 'Erreur : impossible de créer le test';
+                endif;     
+            else:
+                $code = 400;
+                $message = 'Erreur : instruction non valide';
+            endif;
+        else:
+            $answers = $existingTest->answers;
+            unset($existingTest->answers);
+            $test = $existingTest;
+
+            $code = 200;
+            $message = 'Test chargé avec succès';
+            $success = true;
+        endif;
+
+        $response = ['success' => $success, 'code' => $code, 'message' => $message, 'test' => $test, 'answers' => $answers, 'data' => $data, 'errors' => $errors];
+
+        $this->response = $this->response->withStringBody(json_encode($response));
+        return $this->response;
+    }
+
+    public function getCorrection(){
+
+        $this->request->allowMethod(['post']);
+        $code = 500;
+        $message = 'Erreur';
+        $success = false;
+        $data = $this->request->getData();
+        $errors = [];
+
+        if(!empty($data['id'])):
+            $test = $this->fetchTable('Tests')->find()->contain(['Answers.Verbs'])->all();
+        endif;
+
+        $test = [];
+
+        $response = ['success' => $success, 'code' => $code, 'message' => $message, 'data' => $data, 'errors' => $errors];
+
+        $this->response = $this->response->withStringBody(json_encode($response));
+        return $this->response;
+    }
+
+    public function getAnswers($testId){
+        $this->request->allowMethod(['get']);
+        $answers = $this->fetchTable('Answers')->find()->where(['test_id' => $testId])->all();
+        $response = [
+            'id' => $testId,
+            'answers' => $answers
+        ];
+        $this->response = $this->response->withStringBody(json_encode($response));
+        return $this->response;
+    }
 }
