@@ -13,6 +13,7 @@ class ApisController extends AppController
     }
 
     public function getVerbs(){
+        $this->request->allowMethod(['get']);
         $data = $this->fetchTable('Verbs')
         ->find()
         ->order(['Verbs.infinitive' => 'ASC'])
