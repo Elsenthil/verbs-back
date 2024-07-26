@@ -21,44 +21,45 @@ class UsersController extends AppController
 
     public function login()
     {
-        $this->request->allowMethod(['post']);
-        $result = $this->Authentication->getResult();
+        $this->request->allowMethod(['get', 'post']);
+        if ($this->request->is('post')) {
+            $result = $this->Authentication->getResult();
+            if ($result->isValid()) {
+                $user = $result->getData();
 
-        if ($result->isValid()) {
-            $user = $result->getData();
+                if ($this->request->getHeader('Origin')[0] === 'http://localhost:3000') {
+                    $key = 'your-secret-key'; // Utilisez une clé sécurisée
+                    $payload = [
+                        'sub' => $user->id,
+                        'exp' => time() + 3600, // 1 heure d'expiration
+                    ];
+                    $token = JWT::encode($payload, $key, 'HS256');
+                    $user->token = $token;
+                    $this->Users->save($user);
 
-            if ($this->request->getHeader('Origin')[0] === 'http://localhost:3000') {
-                $key = 'your-secret-key'; // Utilisez une clé sécurisée
-                $payload = [
-                    'sub' => $user->id,
-                    'exp' => time() + 3600, // 1 heure d'expiration
-                ];
-                $token = JWT::encode($payload, $key, 'HS256');
-                $user->token = $token;
-                $this->Users->save($user);
+                    $response = [
+                        'success' => true,
+                        'user' => $user
+                    ];
 
-                $response = [
-                    'success' => true,
-                    'user' => $user
-                ];
-
-                return $this->response
-                    ->withType('application/json')
-                    ->withStringBody(json_encode($response));
+                    return $this->response
+                        ->withType('application/json')
+                        ->withStringBody(json_encode($response));
+                } else {
+                    $redirect = $this->request->getQuery('redirect', [
+                        'controller' => 'Verbs',
+                        'action' => 'index',
+                    ]);
+                    return $this->redirect($redirect);
+                }
             } else {
-                $redirect = $this->request->getQuery('redirect', [
-                    'controller' => 'Verbs',
-                    'action' => 'index',
-                ]);
-                return $this->redirect($redirect);
-            }
-        } else {
-            if($this->request->getHeader('Content-Type')[0] === 'application/json'){
-                return $this->response
-                    ->withType('application/json')
-                    ->withStringBody(json_encode(['success' => false]));
-            } else {
-                throw new UnauthorizedException('Invalid username or password');
+                if($this->request->getHeader('Content-Type')[0] === 'application/json'){
+                    return $this->response
+                        ->withType('application/json')
+                        ->withStringBody(json_encode(['success' => false]));
+                } else {
+                    throw new UnauthorizedException('Invalid username or password');
+                }
             }
         }
     }
