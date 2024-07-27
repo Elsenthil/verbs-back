@@ -4,12 +4,67 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use Cake\Event\EventInterface;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Cake\Utility\Security;
+use Cake\Log\Log;
+use Cake\Http\Cookie\Cookie;
+use Cake\I18n\FrozenTime;
 
 class ApisController extends AppController
 {
     public function beforeFilter(EventInterface $event) {
         parent::beforeFilter($event);
+
+        // Récupère l'action courante
+        $currentAction = $this->request->getParam('action');
+        // Ajoute dynamiquement l'action courante aux actions non authentifiées
+        $this->Authentication->addUnauthenticatedActions([$currentAction]);
         $this->response = $this->response->withType('application/json');
+
+        $isAuthorized = $this->isAuthorized();
+        if ($isAuthorized === false) {
+            return $this->response
+                ->withStatus(401)
+                ->withStringBody(json_encode(['success' => false, 'message' => 'Non autorisé']));
+        }
+    }
+
+    private function isAuthorized() {
+        $token = $this->request->getCookie('token');
+        if (!$token) {
+            return false;
+        }
+
+        try {
+            $decoded = JWT::decode($token, new Key(Security::getSalt(), 'HS256'));
+            $userId = $decoded->sub;
+            $user = $this->fetchTable('Users')->findById($userId)->first();
+
+            $unauthorized = [
+                ($decoded->exp < time()),
+                (empty($user))
+                // Ajouter d'autres motifs de refus ici
+            ];
+
+            if (!in_array(true, $unauthorized)) {
+                // Vérifie si le token est sur le point d'expirer (par exemple, dans les 5 minutes)
+                $expiresSoon = ($decoded->exp - time()) < 300; // 300 secondes = 5 minutes
+                if ($expiresSoon) {
+                    
+                    $cookie = $this->createCookie($user);
+
+                    // Mets à jour la réponse pour inclure le nouveau cookie
+                    $this->response = $this->response->withCookie($cookie);
+                }
+
+                return true;
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur de décodage JWT : ' . $e->getMessage());
+        }
+
+        return false;
     }
 
     public function getVerbs(){

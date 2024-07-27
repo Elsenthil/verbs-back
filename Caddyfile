@@ -1,0 +1,4 @@
+localhost:8765 {
+  reverse_proxy localhost:8764
+  tls C:\wamp64\www\dev-cakephp\verbs-back\localhost.pem C:\wamp64\www\dev-cakephp\verbs-back\localhost-key.pem
+}

@@ -3,10 +3,13 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use Cake\Utility\Security;
+use Cake\Http\Cookie\Cookie;
+use Cake\Http\Response;
+use Cake\I18n\FrozenTime;
 use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+use Cake\Utility\Security;
 use Cake\Log\Log;
+
 
 class UsersController extends AppController
 {
@@ -16,7 +19,7 @@ class UsersController extends AppController
         parent::beforeFilter($event);
         // Configurez l'action de connexion pour ne pas exiger d'authentification,
         // évitant ainsi le problème de la boucle de redirection infinie
-        $this->Authentication->addUnauthenticatedActions(['login', 'add']);
+        $this->Authentication->addUnauthenticatedActions(['login', 'logout']);
     }
 
     public function login()
@@ -25,26 +28,15 @@ class UsersController extends AppController
         if ($this->request->is('post')) {
             $result = $this->Authentication->getResult();
             if ($result->isValid()) {
-                $user = $result->getData();
-
-                if ($this->request->getHeader('Origin')[0] === 'http://localhost:3000') {
-                    $key = 'your-secret-key'; // Utilisez une clé sécurisée
-                    $payload = [
-                        'sub' => $user->id,
-                        'exp' => time() + 3600, // 1 heure d'expiration
-                    ];
-                    $token = JWT::encode($payload, $key, 'HS256');
-                    $user->token = $token;
-                    $this->Users->save($user);
-
-                    $response = [
-                        'success' => true,
-                        'user' => $user
-                    ];
+                if($this->request->getHeader('Content-Type')[0] === 'application/json'){
+                    $user = $result->getData();
+                    
+                    $cookie = $this->createCookie($user);
 
                     return $this->response
+                        ->withCookie($cookie)
                         ->withType('application/json')
-                        ->withStringBody(json_encode($response));
+                        ->withStringBody(json_encode(['success' => true, 'user' => $user]));
                 } else {
                     $redirect = $this->request->getQuery('redirect', [
                         'controller' => 'Verbs',
@@ -58,7 +50,7 @@ class UsersController extends AppController
                         ->withType('application/json')
                         ->withStringBody(json_encode(['success' => false]));
                 } else {
-                    throw new UnauthorizedException('Invalid username or password');
+                    return $this->redirect($this->referer());
                 }
             }
         }
@@ -66,20 +58,28 @@ class UsersController extends AppController
 
     public function logout()
     {
+        $cookie = (new Cookie('token'))
+        ->withValue('')
+        ->withExpiry(new \DateTime('-1 year'))
+        ->withPath('/')
+        ->withDomain('')
+        ->withSecure(true)
+        ->withHttpOnly(true)
+        ->withSameSite(Cookie::SAMESITE_LAX);
         $result = $this->Authentication->getResult();
         // indépendamment de POST ou GET, rediriger si l'utilisateur est connecté
+        $response = false;
         if ($result && $result->isValid()) {
             $this->Authentication->logout();
-
-            if($this->request->getHeader('Content-Type')[0] === 'application/json'){
-                return $this->response
-                    ->withType('application/json')
-                    ->withStringBody(json_encode(['success' => true]));
-            } else {
-                return $this->redirect(['controller' => 'Users', 'action' => 'login']);
-            }
-            
+            $response = true;
         }
+        if(isset($this->request->getHeader('Content-Type')[0]) && $this->request->getHeader('Content-Type')[0] === 'application/json'){
+            return $this->response
+            ->withType('application/json')
+            ->withExpiredCookie($cookie)
+            ->withStringBody(json_encode(['success' => $response]));
+        }
+        return $this->redirect(['controller' => 'Users', 'action' => 'login']);
     }
 
     public function index()

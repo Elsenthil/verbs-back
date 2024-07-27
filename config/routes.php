@@ -63,7 +63,7 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/pages/*', 'Pages::display');
 
         // config/routes.php
-        $builder->connect('/get-csrf-token', ['controller' => 'Tokens', 'action' => 'getToken']);
+        $builder->connect('/api/v1/{action}/*', ['controller' => 'Apis']);
 
 
         /*

@@ -230,26 +230,26 @@ ServerRequest::addDetector('tablet', function ($request) {
 //\Cake\I18n\FrozenDate::setToStringFormat('dd.MM.yyyy');
 //\Cake\I18n\FrozenTime::setToStringFormat('dd.MM.yyyy HH:mm');
 
-use Cake\Http\MiddlewareQueue;
-use Authentication\Middleware\AuthenticationMiddleware;
+// use Cake\Http\MiddlewareQueue;
+// use Authentication\Middleware\AuthenticationMiddleware;
 
-$service = new \Authentication\AuthenticationService();
-$service->loadAuthenticator('Authentication.Jwt', [
-    'returnPayload' => false,
-    'secretKey' => env('JWT_SECRET_KEY'),
-    'header' => env('JWT_HEADER'),
-    'queryParam' => env('JWT_QUERY_PARAM'),
-    'tokenPrefix' => env('JWT_TOKEN_PREFIX'),
-]);
+// $service = new \Authentication\AuthenticationService();
+// $service->loadAuthenticator('Authentication.Jwt', [
+//     'returnPayload' => false,
+//     'secretKey' => env('JWT_SECRET_KEY'),
+//     'header' => env('JWT_HEADER'),
+//     'queryParam' => env('JWT_QUERY_PARAM'),
+//     'tokenPrefix' => env('JWT_TOKEN_PREFIX'),
+// ]);
 
-$service->loadIdentifier('Authentication.Password', [
-    'fields' => [
-        'username' => 'username',
-        'password' => 'password'
-    ]
-]);
+// $service->loadIdentifier('Authentication.Password', [
+//     'fields' => [
+//         'username' => 'username',
+//         'password' => 'password'
+//     ]
+// ]);
 
-$middlewareQueue = new MiddlewareQueue();
-$middlewareQueue->add(new AuthenticationMiddleware($service));
+// $middlewareQueue = new MiddlewareQueue();
+// $middlewareQueue->add(new AuthenticationMiddleware($service));
 
 

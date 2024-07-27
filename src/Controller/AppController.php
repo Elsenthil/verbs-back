@@ -5,6 +5,11 @@ namespace App\Controller;
 
 use Cake\Controller\Controller;
 use Cake\Event\EventInterface;
+use Cake\Http\Cookie\Cookie;
+use Cake\Http\Response;
+use Cake\I18n\FrozenTime;
+use Firebase\JWT\JWT;
+use Cake\Utility\Security;
 
 class AppController extends Controller
 {
@@ -28,5 +33,29 @@ class AppController extends Controller
         if ($user) {
             $this->set('authUser', $user);
         }
+    }
+
+    private $expiration = 3600;
+    protected function createCookie($user){
+        $token = JWT::encode([
+            'sub' => $user->id,
+            'exp' => time() + $this->expiration // 1 heure
+        ], Security::getSalt(), 'HS256');
+        $user->token = $token;
+        $this->fetchTable('Users')->save($user);
+
+        $expiry = new FrozenTime('+1 hour');
+        $cookie = new Cookie(
+            'token',
+            $token,
+            $expiry,
+            '/',
+            '', // Change to your domain if needed
+            true, // Secure (only sent over HTTPS)
+            true, // HttpOnly (not accessible via JavaScript)
+            'None', // SameSite (can be 'Strict', 'Lax', or 'None')
+            'Strict'
+        );
+        return $cookie;
     }
 }

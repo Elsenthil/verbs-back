@@ -97,7 +97,7 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
             // Catch any exceptions in the lower layers,
             // and make an error page/response
             ->add(new ErrorHandlerMiddleware(Configure::read('Error'), $this))
-            ->add(new TokenMiddleware())
+            //->add(new TokenMiddleware())
             // Handle plugin/theme assets like CakePHP normally does.
             ->add(new AssetMiddleware([
                 'cacheTime' => Configure::read('Asset.cacheTime'),

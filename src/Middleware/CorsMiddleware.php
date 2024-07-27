@@ -14,7 +14,7 @@ class CorsMiddleware implements MiddlewareInterface
         file_put_contents(WWW_ROOT.DS.'log.txt', 'Processing CORS Middleware' . PHP_EOL, FILE_APPEND);
 
         $origin = $request->getHeaderLine('Origin');
-        $allowedOrigins = ['http://localhost:3000'];
+        $allowedOrigins = ['https://localhost:3000'];
 
         if ($request->getMethod() === 'OPTIONS') {
             file_put_contents(WWW_ROOT.DS.'log.txt', 'Handling OPTIONS request' . PHP_EOL, FILE_APPEND);
